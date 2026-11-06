@@ -1,0 +1,129 @@
+# yaml-language-server: $schema=https://kortix.com/schema/kortix.schema.json
+default_agent: weekly-report
+
+project:
+  name: chief-of-staff-starter
+  description: Six scheduled agents that run a company's operating cadence, with one rule about what may leave the building.
+
+skills:
+  meeting-recap: skills/meeting-recap
+
+connectors:
+  - slug: gmail
+    provider: composio
+    app: gmail
+    policies:
+      - match: "gmail.send_*"
+        action: require_approval
+      - match: "gmail.reply_*"
+        action: require_approval
+      - match: "gmail.forward_*"
+        action: require_approval
+      - match: "gmail.delete_*"
+        action: block
+  - slug: linear
+    provider: composio
+    app: linear
+    policies:
+      - match: "linear.delete_*"
+        action: block
+  - slug: google_sheets
+    provider: composio
+    app: google_sheets
+    policies:
+      - match: "google_sheets.*"
+        action: always_run
+
+policy:
+  default_mode: risk
+approvals:
+  ttl: 4h
+
+agents:
+  weekly-report:
+    description: Writes the Monday numbers report from the metrics sheet and posts it to Slack.
+    mode: primary
+    prompt_file: agents/weekly-report.md
+    tools: "*"
+    connectors: [google_sheets, kortix_slack]
+    workspace: { project_repository: true }
+  standup-summary:
+    description: Reads each person's Linear issues and writes the daily standup.
+    mode: primary
+    prompt_file: agents/standup-summary.md
+    tools: "*"
+    connectors: [linear, kortix_slack]
+    workspace: { project_repository: true }
+  meeting-notes:
+    description: Writes notes and action items for every meeting that ended since the last check.
+    mode: primary
+    prompt_file: agents/meeting-notes.md
+    tools: "*"
+    skills: [meeting-recap]
+    connectors: [linear, kortix_slack]
+    workspace: { project_repository: true }
+  investor-update:
+    description: Drafts the monthly investor update from the metrics sheet. Never sends it.
+    mode: primary
+    prompt_file: agents/investor-update.md
+    tools: "*"
+    connectors: [google_sheets, gmail]
+    workspace: { project_repository: true }
+  inbox-triage:
+    description: Labels new mail, drafts replies and files tasks. Anything customer-facing stays a draft.
+    mode: primary
+    prompt_file: agents/inbox-triage.md
+    tools: "*"
+    connectors: [gmail, linear]
+    workspace: { project_repository: true }
+  qbr-prep:
+    description: Assembles the quarterly review briefing from the metrics sheet and the Linear history.
+    mode: primary
+    prompt_file: agents/qbr-prep.md
+    tools: "*"
+    connectors: [google_sheets, linear]
+    workspace: { project_repository: true }
+
+triggers:
+  - slug: weekly-report
+    name: Monday numbers report
+    type: cron
+    agent: weekly-report
+    cron: "0 0 6 * * 1"
+    timezone: Europe/London
+    prompt: "Read the metrics sheet, write the weekly report with commentary on what moved and why, and post it to #metrics."
+  - slug: standup-summary
+    name: Daily standup
+    type: cron
+    agent: standup-summary
+    cron: "0 30 8 * * 1-5"
+    timezone: Europe/London
+    prompt: "Read each person's Linear issues and write the standup, then post it to #standup."
+  - slug: meeting-ended-check
+    name: Meeting notes sweep
+    type: cron
+    agent: meeting-notes
+    cron: "0 */15 * * * *"
+    timezone: Europe/London
+    prompt: "Load the meeting-recap skill and write notes and tickets for every meeting that ended since the last check."
+  - slug: investor-update
+    name: Monthly investor update
+    type: cron
+    agent: investor-update
+    cron: "0 0 9 1 * *"
+    timezone: Europe/London
+    prompt: "Pull MRR, growth, burn, runway and active accounts, compare to last month and to plan, and draft the update. Leave it as a draft."
+  - slug: inbox-triage
+    name: Inbox sweep
+    type: cron
+    agent: inbox-triage
+    cron: "0 */15 * * * *"
+    timezone: Europe/London
+    prompt: "Read new mail, label it, then draft a reply or file a Linear task. Leave anything customer-facing as a draft."
+  - slug: qbr-prep
+    name: Quarterly review prep
+    type: cron
+    agent: qbr-prep
+    cron: "0 0 8 1 */3 *"
+    timezone: Europe/London
+    prompt: "Assemble the quarterly review briefing from the metrics sheet and the Linear history. Do not share or send anything."
