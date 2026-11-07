@@ -89,6 +89,10 @@ agents/*.md              one prompt per job
 skills/meeting-recap/    the skill the meeting-notes agent loads
 ```
 
+## Choosing what to run it on
+
+The starter is the build; the plan is a separate question. [The AI chief of staff tools comparison](https://aichiefofstaffguide.com/ai-chief-of-staff-tools) sets out what each product covers and where its slice ends, and [what an AI chief of staff costs](https://aichiefofstaffguide.com/ai-chief-of-staff-cost) works through the published plans and the work each one leaves on your desk.
+
 ## Licence
 
 The manifest and the prompts in this starter are yours to change and ship. Kortix itself is open source; its licence sits in the [Kortix repository](https://github.com/kortix-ai/CompanyOS).
